@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import ollama from 'ollama';
 
@@ -36,6 +37,22 @@ const sendJson = (
 };
 
 const server = http.createServer(async (request, response) => {
+  if (request.method === 'GET' && request.url === '/') {
+    try {
+      const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf-8');
+
+      response.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+      });
+
+      response.end(html);
+    } catch {
+      sendJson(response, 500, { error: 'Could not load test page.' });
+    }
+
+    return;
+  }
+
   if (request.method === 'POST' && request.url === '/api/chat') {
     try {
       const rawBody = await readRequestBody(request);
@@ -56,6 +73,7 @@ const server = http.createServer(async (request, response) => {
         model: MODEL,
         messages: body.messages,
         stream: true,
+        keep_alive: -1,
       });
 
       for await (const part of stream) {

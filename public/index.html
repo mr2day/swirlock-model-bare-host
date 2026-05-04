@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Swirlock Model Bare Host Test</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101114;
+        --surface: #191b20;
+        --surface-2: #20242b;
+        --field: #111318;
+        --line: #343842;
+        --text: #eef1f5;
+        --muted: #a0a7b3;
+        --accent: #4fa88a;
+        --accent-strong: #68c7a5;
+        --danger: #ff8a80;
+        --shadow: rgba(0, 0, 0, 0.32);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        min-height: 100vh;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(16, 17, 20, 0.94);
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 13px;
+        text-align: right;
+      }
+
+      .status.ok {
+        color: var(--accent-strong);
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .messages {
+        width: min(920px, calc(100vw - 28px));
+        margin: 0 auto;
+        padding: 24px 0 28px;
+      }
+
+      .empty-state {
+        display: grid;
+        place-items: center;
+        min-height: calc(100vh - 230px);
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .empty-state strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text);
+        font-size: 20px;
+      }
+
+      .message {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--surface-2);
+        color: var(--muted);
+        font-weight: 700;
+        user-select: none;
+      }
+
+      .message.user .avatar {
+        background: #2a313b;
+        color: var(--text);
+      }
+
+      .message.assistant .avatar {
+        background: #1e3a31;
+        color: var(--accent-strong);
+      }
+
+      .bubble {
+        min-width: 0;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .message.user .bubble {
+        justify-self: end;
+        max-width: min(760px, 100%);
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface-2);
+      }
+
+      .message.assistant .bubble {
+        width: 100%;
+        padding-top: 5px;
+      }
+
+      .meta {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .meta.error {
+        color: var(--danger);
+      }
+
+      .composer-wrap {
+        position: sticky;
+        bottom: 0;
+        z-index: 4;
+        padding: 14px;
+        background: linear-gradient(rgba(16, 17, 20, 0), var(--bg) 22px);
+      }
+
+      .composer {
+        width: min(920px, calc(100vw - 28px));
+        margin: 0 auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: 0 14px 38px var(--shadow);
+      }
+
+      .input-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: end;
+        padding: 10px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 52px;
+        max-height: 210px;
+        resize: none;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        line-height: 1.45;
+        padding: 6px 4px;
+      }
+
+      textarea::placeholder {
+        color: var(--muted);
+      }
+
+      .send {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #06110d;
+        font-size: 18px;
+        font-weight: 800;
+      }
+
+      .send:hover:not(:disabled) {
+        background: var(--accent-strong);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        padding: 0 10px 10px;
+      }
+
+      .secondary {
+        height: 34px;
+        min-width: 80px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--field);
+        color: var(--text);
+        padding: 0 10px;
+      }
+
+      .stop {
+        display: none;
+        color: #e5bc63;
+      }
+
+      .stop.visible {
+        display: inline-block;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <h1>Swirlock Model Bare Host Test</h1>
+        <div id="status" class="status ok">Ready</div>
+      </header>
+
+      <main id="messages" class="messages">
+        <div id="emptyState" class="empty-state">
+          <div>
+            <strong>qwen2.5-coder:14b</strong>
+            <span>Send a prompt to test the streaming API.</span>
+          </div>
+        </div>
+      </main>
+
+      <div class="composer-wrap">
+        <section class="composer">
+          <div class="input-row">
+            <textarea id="prompt" rows="1" placeholder="Message the model"></textarea>
+            <button id="send" class="send" type="button">&gt;</button>
+          </div>
+
+          <div class="actions">
+            <button id="stop" class="secondary stop" type="button">Stop</button>
+            <button id="clear" class="secondary" type="button">Clear</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const messagesEl = document.getElementById("messages");
+      const emptyStateEl = document.getElementById("emptyState");
+      const statusEl = document.getElementById("status");
+      const promptEl = document.getElementById("prompt");
+      const sendButton = document.getElementById("send");
+      const stopButton = document.getElementById("stop");
+      const clearButton = document.getElementById("clear");
+
+      const conversation = [];
+      let abortController = null;
+
+      function setStatus(text, kind = "") {
+        statusEl.textContent = text;
+        statusEl.className = `status ${kind}`.trim();
+      }
+
+      function scrollToBottom() {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+        });
+      }
+
+      function autosizePrompt() {
+        promptEl.style.height = "auto";
+        promptEl.style.height = `${Math.min(210, Math.max(52, promptEl.scrollHeight))}px`;
+      }
+
+      function setRunning(isRunning) {
+        sendButton.disabled = isRunning;
+        promptEl.disabled = isRunning;
+        stopButton.classList.toggle("visible", isRunning);
+      }
+
+      function createMessage(role, text = "") {
+        emptyStateEl.style.display = "none";
+
+        const row = document.createElement("article");
+        row.className = `message ${role}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = role === "user" ? "U" : "M";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+
+        row.append(avatar, bubble);
+        messagesEl.append(row);
+        scrollToBottom();
+
+        return bubble;
+      }
+
+      function createMeta(targetBubble, text = "") {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = text;
+        targetBubble.after(meta);
+        return meta;
+      }
+
+      function parseSseChunk(buffer, onData) {
+        const events = buffer.split("\n\n");
+        const remaining = events.pop() || "";
+
+        for (const event of events) {
+          const lines = event.split("\n");
+
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+
+            const rawJson = line.slice(5).trim();
+            if (!rawJson) continue;
+
+            onData(JSON.parse(rawJson));
+          }
+        }
+
+        return remaining;
+      }
+
+      async function sendPrompt() {
+        const text = promptEl.value.trim();
+
+        if (!text || abortController) {
+          return;
+        }
+
+        conversation.push({
+          role: "user",
+          content: text,
+        });
+
+        createMessage("user", text);
+
+        const assistantBubble = createMessage("assistant", "");
+        const assistantMeta = createMeta(assistantBubble, "Starting...");
+
+        promptEl.value = "";
+        autosizePrompt();
+
+        abortController = new AbortController();
+        setRunning(true);
+        setStatus("Streaming response...", "ok");
+
+        let assistantText = "";
+        let buffer = "";
+
+        try {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messages: conversation,
+            }),
+            signal: abortController.signal,
+          });
+
+          if (!response.ok || !response.body) {
+            throw new Error(`Request failed with status ${response.status}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+
+          while (true) {
+            const result = await reader.read();
+
+            if (result.done) {
+              break;
+            }
+
+            buffer += decoder.decode(result.value, { stream: true });
+
+            buffer = parseSseChunk(buffer, (data) => {
+              if (data.content) {
+                assistantText += data.content;
+                assistantBubble.textContent = assistantText;
+                assistantMeta.textContent = "Streaming...";
+                scrollToBottom();
+              }
+
+              if (data.done) {
+                assistantMeta.textContent = "Done";
+              }
+
+              if (data.error) {
+                assistantMeta.textContent = data.error;
+                assistantMeta.classList.add("error");
+                setStatus(data.error, "error");
+              }
+            });
+          }
+
+          if (assistantText) {
+            conversation.push({
+              role: "assistant",
+              content: assistantText,
+            });
+          }
+
+          setStatus("Ready", "ok");
+        } catch (error) {
+          if (error.name === "AbortError") {
+            assistantMeta.textContent = "Stopped.";
+            setStatus("Stopped.", "");
+          } else {
+            assistantMeta.textContent = error.message || "Request failed.";
+            assistantMeta.classList.add("error");
+            setStatus(error.message || "Request failed.", "error");
+          }
+        } finally {
+          abortController = null;
+          setRunning(false);
+        }
+      }
+
+      sendButton.addEventListener("click", sendPrompt);
+
+      stopButton.addEventListener("click", () => {
+        if (abortController) {
+          abortController.abort();
+        }
+      });
+
+      clearButton.addEventListener("click", () => {
+        if (abortController) return;
+
+        conversation.splice(0, conversation.length);
+        messagesEl.querySelectorAll(".message, .meta").forEach((node) => node.remove());
+        emptyStateEl.style.display = "grid";
+        setStatus("Ready", "ok");
+      });
+
+      promptEl.addEventListener("input", autosizePrompt);
+
+      promptEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendPrompt();
+        }
+      });
+
+      autosizePrompt();
+    </script>
+  </body>
+</html>
