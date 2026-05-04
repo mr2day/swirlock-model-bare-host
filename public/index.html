@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Swirlock Model Bare Host Test</title>
+
     <style>
       :root {
         color-scheme: dark;
@@ -14,9 +15,11 @@
         --line: #343842;
         --text: #eef1f5;
         --muted: #a0a7b3;
+        --subtle: #737b8a;
         --accent: #4fa88a;
         --accent-strong: #68c7a5;
         --danger: #ff8a80;
+        --warning: #e5bc63;
         --shadow: rgba(0, 0, 0, 0.32);
       }
 
@@ -27,6 +30,7 @@
       body {
         margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         background: var(--bg);
         color: var(--text);
         font-family:
@@ -34,34 +38,44 @@
       }
 
       button,
-      textarea {
+      textarea,
+      input,
+      select {
         font: inherit;
       }
 
       button {
         border: 0;
+        color: inherit;
         cursor: pointer;
       }
 
-      button:disabled {
+      button:disabled,
+      input:disabled,
+      select:disabled,
+      textarea:disabled {
         cursor: not-allowed;
-        opacity: 0.5;
+        opacity: 0.52;
       }
 
       .shell {
         display: grid;
         grid-template-rows: auto 1fr auto;
         min-height: 100vh;
+        min-height: 100dvh;
       }
 
       .topbar {
         display: flex;
+        align-items: flex-start;
+        flex-direction: column;
         justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding: 12px 18px;
+        gap: 6px;
+        min-height: 58px;
+        padding: 10px 12px;
         border-bottom: 1px solid var(--line);
-        background: rgba(16, 17, 20, 0.94);
+        background: rgba(16, 17, 20, 0.92);
+        backdrop-filter: blur(12px);
         position: sticky;
         top: 0;
         z-index: 5;
@@ -70,12 +84,15 @@
       h1 {
         margin: 0;
         font-size: 16px;
+        font-weight: 680;
       }
 
       .status {
+        min-width: 0;
         color: var(--muted);
         font-size: 13px;
-        text-align: right;
+        text-align: left;
+        overflow-wrap: anywhere;
       }
 
       .status.ok {
@@ -86,16 +103,39 @@
         color: var(--danger);
       }
 
+      .status.loading {
+        color: var(--warning);
+      }
+
+      .status.loading::before {
+        content: "";
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        margin-right: 7px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 999px;
+        vertical-align: -1px;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
       .messages {
-        width: min(920px, calc(100vw - 28px));
+        width: min(920px, calc(100vw - 20px));
         margin: 0 auto;
-        padding: 24px 0 28px;
+        padding: 16px 0 22px;
       }
 
       .empty-state {
         display: grid;
         place-items: center;
-        min-height: calc(100vh - 230px);
+        min-height: calc(100dvh - 250px);
         color: var(--muted);
         text-align: center;
       }
@@ -105,24 +145,26 @@
         margin-bottom: 8px;
         color: var(--text);
         font-size: 20px;
+        font-weight: 700;
       }
 
       .message {
         display: grid;
-        grid-template-columns: 36px minmax(0, 1fr);
-        gap: 12px;
-        margin-bottom: 22px;
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 9px;
+        margin: 0 0 18px;
       }
 
       .avatar {
         display: grid;
         place-items: center;
-        width: 36px;
-        height: 36px;
+        width: 30px;
+        height: 30px;
         border-radius: 8px;
         background: var(--surface-2);
         color: var(--muted);
-        font-weight: 700;
+        font-weight: 750;
+        font-size: 13px;
         user-select: none;
       }
 
@@ -138,6 +180,12 @@
 
       .bubble {
         min-width: 0;
+        width: fit-content;
+        max-width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
         line-height: 1.55;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
@@ -145,25 +193,83 @@
 
       .message.user .bubble {
         justify-self: end;
-        max-width: min(760px, 100%);
-        padding: 12px 14px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
         background: var(--surface-2);
+        border-color: var(--line);
       }
 
       .message.assistant .bubble {
         width: 100%;
-        padding-top: 5px;
+        max-width: 100%;
+        padding-left: 0;
+        padding-right: 0;
       }
 
-      .meta {
+      .text-block,
+      .assistant-text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .assistant-text {
+        min-height: 28px;
+      }
+
+      .thumbnail-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
         margin-top: 10px;
-        color: var(--muted);
-        font-size: 12px;
       }
 
-      .meta.error {
+      .message-thumb {
+        width: 96px;
+        height: 72px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        object-fit: cover;
+        background: var(--field);
+      }
+
+      .thinking-panel {
+        display: none;
+        margin-bottom: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #15181d;
+        color: var(--muted);
+      }
+
+      .thinking-panel.visible {
+        display: block;
+      }
+
+      .thinking-panel summary {
+        cursor: pointer;
+        padding: 9px 12px;
+        color: var(--warning);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .thinking-text {
+        max-height: 220px;
+        overflow: auto;
+        border-top: 1px solid var(--line);
+        padding: 10px 12px 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .message-meta {
+        margin-top: 10px;
+        color: var(--subtle);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .message-meta.error {
         color: var(--danger);
       }
 
@@ -171,12 +277,12 @@
         position: sticky;
         bottom: 0;
         z-index: 4;
-        padding: 14px;
+        padding: 10px 8px max(10px, env(safe-area-inset-bottom));
         background: linear-gradient(rgba(16, 17, 20, 0), var(--bg) 22px);
       }
 
       .composer {
-        width: min(920px, calc(100vw - 28px));
+        width: min(920px, calc(100vw - 16px));
         margin: 0 auto;
         border: 1px solid var(--line);
         border-radius: 8px;
@@ -184,18 +290,64 @@
         box-shadow: 0 14px 38px var(--shadow);
       }
 
+      .composer.dragging {
+        border-color: var(--accent);
+      }
+
+      .attachments {
+        display: none;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 10px 10px 0;
+      }
+
+      .attachments.visible {
+        display: flex;
+      }
+
+      .attachment {
+        position: relative;
+        width: 86px;
+        height: 68px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--field);
+      }
+
+      .attachment img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .remove-attachment {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(7, 9, 12, 0.82);
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1;
+      }
+
       .input-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
-        gap: 8px;
+        gap: 6px;
         align-items: end;
-        padding: 10px;
+        padding: 8px;
       }
 
       textarea {
         width: 100%;
-        min-height: 52px;
-        max-height: 210px;
+        min-height: 48px;
+        max-height: 170px;
         resize: none;
         border: 0;
         outline: none;
@@ -206,7 +358,7 @@
       }
 
       textarea::placeholder {
-        color: var(--muted);
+        color: var(--subtle);
       }
 
       .send {
@@ -225,29 +377,184 @@
         background: var(--accent-strong);
       }
 
-      .actions {
-        display: flex;
+      .settings {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
-        padding: 0 10px 10px;
+        align-items: center;
+        padding: 0 8px 8px;
       }
 
-      .secondary {
-        height: 34px;
-        min-width: 80px;
+      .icon-button,
+      .stop,
+      .clear {
+        display: inline-grid;
+        place-items: center;
+        height: 36px;
+        min-width: 36px;
         border: 1px solid var(--line);
         border-radius: 8px;
         background: var(--field);
         color: var(--text);
         padding: 0 10px;
+        justify-content: center;
       }
 
       .stop {
         display: none;
-        color: #e5bc63;
+        color: var(--warning);
       }
 
       .stop.visible {
-        display: inline-block;
+        display: inline-grid;
+      }
+
+      .clear {
+        color: var(--muted);
+      }
+
+      .setting {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .setting label,
+      .check {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      input,
+      select {
+        width: 100%;
+        height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--field);
+        color: var(--text);
+        padding: 0 9px;
+      }
+
+      .check {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 36px;
+        padding: 0 4px;
+        white-space: nowrap;
+      }
+
+      .check input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent);
+      }
+
+      .file-input {
+        display: none;
+      }
+
+      .settings .icon-button,
+      .settings .clear,
+      .settings .stop,
+      .settings .check {
+        width: 100%;
+      }
+
+      @media (min-width: 760px) {
+        .topbar {
+          align-items: center;
+          flex-direction: row;
+          gap: 18px;
+          min-height: 56px;
+          padding: 12px 18px;
+        }
+
+        .status {
+          text-align: right;
+        }
+
+        .messages {
+          width: min(920px, calc(100vw - 28px));
+          padding: 24px 0 28px;
+        }
+
+        .message {
+          grid-template-columns: 36px minmax(0, 1fr);
+          gap: 12px;
+          margin-bottom: 22px;
+        }
+
+        .avatar {
+          width: 36px;
+          height: 36px;
+        }
+
+        .bubble {
+          max-width: min(760px, 100%);
+          padding: 12px 14px;
+        }
+
+        .message-thumb {
+          width: 112px;
+          height: 82px;
+        }
+
+        .composer-wrap {
+          padding: 14px;
+        }
+
+        .composer {
+          width: min(920px, calc(100vw - 28px));
+        }
+
+        .input-row {
+          gap: 8px;
+          padding: 10px;
+        }
+
+        textarea {
+          min-height: 52px;
+          max-height: 210px;
+        }
+
+        .send {
+          width: 38px;
+          height: 38px;
+        }
+
+        .settings {
+          grid-template-columns:
+            auto minmax(150px, 220px) minmax(88px, 130px) minmax(88px, 120px)
+            auto auto auto;
+          padding: 0 10px 10px;
+        }
+
+        .icon-button,
+        .stop,
+        .clear {
+          height: 34px;
+          min-width: 34px;
+        }
+
+        .settings .icon-button,
+        .settings .clear,
+        .settings .stop,
+        .settings .check {
+          width: auto;
+        }
+
+        input,
+        select {
+          height: 34px;
+        }
+
+        .check {
+          justify-content: flex-start;
+          min-height: 34px;
+        }
       }
     </style>
   </head>
@@ -256,53 +563,114 @@
     <div class="shell">
       <header class="topbar">
         <h1>Swirlock Model Bare Host Test</h1>
-        <div id="status" class="status ok">Ready</div>
+        <div id="status" class="status">Checking model status...</div>
       </header>
 
       <main id="messages" class="messages">
         <div id="emptyState" class="empty-state">
           <div>
-            <strong>qwen2.5-coder:14b</strong>
-            <span>Send a prompt to test the streaming API.</span>
+            <strong>Swirlock Model Bare Host</strong>
+            <span>What should I inspect?</span>
           </div>
         </div>
       </main>
 
       <div class="composer-wrap">
-        <section class="composer">
+        <section id="composer" class="composer" aria-label="Message composer">
+          <div id="attachments" class="attachments"></div>
+
           <div class="input-row">
             <textarea id="prompt" rows="1" placeholder="Message the model"></textarea>
-            <button id="send" class="send" type="button">&gt;</button>
+            <button id="send" class="send" type="button" title="Send" aria-label="Send">&gt;</button>
           </div>
 
-          <div class="actions">
-            <button id="stop" class="secondary stop" type="button">Stop</button>
-            <button id="clear" class="secondary" type="button">Clear</button>
+          <div class="settings">
+            <button id="attach" class="icon-button" type="button" title="Attach image" aria-label="Attach image">
+              +
+            </button>
+
+            <div class="setting">
+              <label for="model">Model</label>
+              <select id="model"></select>
+            </div>
+
+            <div class="setting">
+              <label for="temperature">Temperature</label>
+              <input id="temperature" type="number" step="0.1" value="0.2" />
+            </div>
+
+            <div class="setting">
+              <label for="format">Format</label>
+              <select id="format">
+                <option value="text">Text</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+
+            <label class="check" for="thinking">
+              <input id="thinking" type="checkbox" />
+              Thinking
+            </label>
+
+            <button id="stop" class="stop" type="button">Stop</button>
+            <button id="clear" class="clear" type="button">Clear</button>
           </div>
+
+          <input id="file" class="file-input" type="file" accept="image/*" multiple />
         </section>
       </div>
     </div>
 
     <script>
-      const messagesEl = document.getElementById("messages");
-      const emptyStateEl = document.getElementById("emptyState");
+      const messages = document.getElementById("messages");
+      const emptyState = document.getElementById("emptyState");
       const statusEl = document.getElementById("status");
+      const composer = document.getElementById("composer");
+      const attachmentsEl = document.getElementById("attachments");
       const promptEl = document.getElementById("prompt");
       const sendButton = document.getElementById("send");
+      const attachButton = document.getElementById("attach");
+      const fileInput = document.getElementById("file");
+      const modelEl = document.getElementById("model");
+      const temperatureEl = document.getElementById("temperature");
+      const formatEl = document.getElementById("format");
+      const thinkingEl = document.getElementById("thinking");
       const stopButton = document.getElementById("stop");
       const clearButton = document.getElementById("clear");
 
+      const attachments = [];
       const conversation = [];
-      let abortController = null;
 
-      function setStatus(text, kind = "") {
-        statusEl.textContent = text;
+      let activeAbortController = null;
+      let activeAssistant = null;
+      let isModelSwitching = false;
+
+      let currentCapabilities = {
+        text: true,
+        images: false,
+        thinking: false,
+      };
+
+      function correlationId(prefix) {
+        const random =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        return `${prefix}-${random}`;
+      }
+
+      function setStatus(message, kind = "") {
+        statusEl.textContent = message;
         statusEl.className = `status ${kind}`.trim();
       }
 
       function scrollToBottom() {
         requestAnimationFrame(() => {
-          window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: "smooth",
+          });
         });
       }
 
@@ -311,14 +679,84 @@
         promptEl.style.height = `${Math.min(210, Math.max(52, promptEl.scrollHeight))}px`;
       }
 
-      function setRunning(isRunning) {
-        sendButton.disabled = isRunning;
-        promptEl.disabled = isRunning;
-        stopButton.classList.toggle("visible", isRunning);
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = () => {
+            resolve({
+              id: correlationId("image"),
+              dataUrl: String(reader.result),
+              mimeType: file.type || "image/png",
+              name: file.name || "image",
+            });
+          };
+
+          reader.onerror = () => reject(new Error("Could not read image."));
+          reader.readAsDataURL(file);
+        });
       }
 
-      function createMessage(role, text = "") {
-        emptyStateEl.style.display = "none";
+      async function addImageFiles(files) {
+        if (!currentCapabilities.images || isModelSwitching) {
+          return;
+        }
+
+        const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
+
+        if (imageFiles.length === 0) {
+          return;
+        }
+
+        const loaded = await Promise.all(imageFiles.map(fileToDataUrl));
+        attachments.push(...loaded);
+        renderAttachments();
+      }
+
+      function renderAttachments() {
+        attachmentsEl.textContent = "";
+        attachmentsEl.classList.toggle("visible", attachments.length > 0);
+
+        for (const item of attachments) {
+          const card = document.createElement("div");
+          card.className = "attachment";
+
+          const img = document.createElement("img");
+          img.src = item.dataUrl;
+          img.alt = item.name;
+
+          const remove = document.createElement("button");
+          remove.className = "remove-attachment";
+          remove.type = "button";
+          remove.title = "Remove image";
+          remove.setAttribute("aria-label", "Remove image");
+          remove.textContent = "x";
+
+          remove.addEventListener("click", () => {
+            const index = attachments.findIndex((candidate) => candidate.id === item.id);
+
+            if (index >= 0) {
+              attachments.splice(index, 1);
+            }
+
+            renderAttachments();
+          });
+
+          card.append(img, remove);
+          attachmentsEl.append(card);
+        }
+      }
+
+      function clearComposer() {
+        promptEl.value = "";
+        attachments.splice(0, attachments.length);
+        fileInput.value = "";
+        renderAttachments();
+        autosizePrompt();
+      }
+
+      function createMessage(role) {
+        emptyState.style.display = "none";
 
         const row = document.createElement("article");
         row.className = `message ${role}`;
@@ -329,21 +767,123 @@
 
         const bubble = document.createElement("div");
         bubble.className = "bubble";
-        bubble.textContent = text;
 
         row.append(avatar, bubble);
-        messagesEl.append(row);
-        scrollToBottom();
+        messages.append(row);
 
-        return bubble;
+        return { row, bubble };
       }
 
-      function createMeta(targetBubble, text = "") {
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        meta.textContent = text;
-        targetBubble.after(meta);
-        return meta;
+      function appendUserMessage(text, imageItems) {
+        const { bubble } = createMessage("user");
+
+        if (text) {
+          const textBlock = document.createElement("div");
+          textBlock.className = "text-block";
+          textBlock.textContent = text;
+          bubble.append(textBlock);
+        }
+
+        if (imageItems.length > 0) {
+          const grid = document.createElement("div");
+          grid.className = "thumbnail-grid";
+
+          for (const item of imageItems) {
+            const img = document.createElement("img");
+            img.className = "message-thumb";
+            img.src = item.dataUrl;
+            img.alt = item.name;
+            grid.append(img);
+          }
+
+          bubble.append(grid);
+        }
+
+        scrollToBottom();
+      }
+
+      function appendAssistantMessage() {
+        const { bubble } = createMessage("assistant");
+
+        const thinkingPanel = document.createElement("details");
+        thinkingPanel.className = "thinking-panel";
+        thinkingPanel.open = true;
+
+        const summary = document.createElement("summary");
+        summary.textContent = "Thinking";
+
+        const thinkingText = document.createElement("div");
+        thinkingText.className = "thinking-text";
+
+        thinkingPanel.append(summary, thinkingText);
+
+        const answerText = document.createElement("div");
+        answerText.className = "assistant-text";
+
+        const messageMeta = document.createElement("div");
+        messageMeta.className = "message-meta";
+        messageMeta.textContent = "Starting...";
+
+        bubble.append(thinkingPanel, answerText, messageMeta);
+        scrollToBottom();
+
+        return {
+          thinkingPanel,
+          thinkingText,
+          answerText,
+          messageMeta,
+        };
+      }
+
+      function buildUserMessage(text, imageItems) {
+        const userMessage = {
+          role: "user",
+          content: text,
+        };
+
+        if (currentCapabilities.images && imageItems.length > 0) {
+          userMessage.images = imageItems.map((item) => item.dataUrl);
+        }
+
+        return userMessage;
+      }
+
+      function buildRequest(userMessage) {
+        return {
+          messages: [...conversation, userMessage],
+          options: {
+            responseFormat: formatEl.value,
+            thinking: currentCapabilities.thinking && thinkingEl.checked,
+            ollama: {
+              temperature: Number(temperatureEl.value || 0.2),
+            },
+          },
+        };
+      }
+
+      function setRunning(value) {
+        const blocked = value || isModelSwitching;
+
+        sendButton.disabled = blocked;
+        modelEl.disabled = blocked;
+        promptEl.disabled = blocked;
+        temperatureEl.disabled = blocked;
+        formatEl.disabled = blocked;
+
+        attachButton.disabled = blocked || !currentCapabilities.images;
+        fileInput.disabled = blocked || !currentCapabilities.images;
+        thinkingEl.disabled = blocked || !currentCapabilities.thinking;
+
+        if (!currentCapabilities.images) {
+          attachments.splice(0, attachments.length);
+          renderAttachments();
+        }
+
+        if (!currentCapabilities.thinking) {
+          thinkingEl.checked = false;
+        }
+
+        stopButton.classList.toggle("visible", value);
       }
 
       function parseSseChunk(buffer, onData) {
@@ -354,10 +894,15 @@
           const lines = event.split("\n");
 
           for (const line of lines) {
-            if (!line.startsWith("data:")) continue;
+            if (!line.startsWith("data:")) {
+              continue;
+            }
 
             const rawJson = line.slice(5).trim();
-            if (!rawJson) continue;
+
+            if (!rawJson) {
+              continue;
+            }
 
             onData(JSON.parse(rawJson));
           }
@@ -366,43 +911,22 @@
         return remaining;
       }
 
-      async function sendPrompt() {
-        const text = promptEl.value.trim();
+      async function connectStream(payload, assistantParts) {
+        activeAbortController = new AbortController();
 
-        if (!text || abortController) {
-          return;
-        }
-
-        conversation.push({
-          role: "user",
-          content: text,
-        });
-
-        createMessage("user", text);
-
-        const assistantBubble = createMessage("assistant", "");
-        const assistantMeta = createMeta(assistantBubble, "Starting...");
-
-        promptEl.value = "";
-        autosizePrompt();
-
-        abortController = new AbortController();
-        setRunning(true);
-        setStatus("Streaming response...", "ok");
-
-        let assistantText = "";
         let buffer = "";
+        let assistantText = "";
+        let thinkingText = "";
 
         try {
           const response = await fetch("/api/chat", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "x-correlation-id": correlationId("browser-stream"),
             },
-            body: JSON.stringify({
-              messages: conversation,
-            }),
-            signal: abortController.signal,
+            body: JSON.stringify(payload),
+            signal: activeAbortController.signal,
           });
 
           if (!response.ok || !response.body) {
@@ -421,67 +945,257 @@
 
             buffer += decoder.decode(result.value, { stream: true });
 
-            buffer = parseSseChunk(buffer, (data) => {
-              if (data.content) {
-                assistantText += data.content;
-                assistantBubble.textContent = assistantText;
-                assistantMeta.textContent = "Streaming...";
+            buffer = parseSseChunk(buffer, (message) => {
+              if (message.type === "started") {
+                assistantParts.messageMeta.textContent = `Running: ${message.data?.modelId || "model"}`;
+                setStatus("Streaming response...", "ok");
+                return;
+              }
+
+              if (message.type === "thinking") {
+                thinkingText += message.data?.text || "";
+                assistantParts.thinkingPanel.classList.add("visible");
+                assistantParts.thinkingText.textContent = thinkingText;
+                assistantParts.thinkingText.scrollTop = assistantParts.thinkingText.scrollHeight;
                 scrollToBottom();
+                return;
               }
 
-              if (data.done) {
-                assistantMeta.textContent = "Done";
+              if (message.type === "chunk") {
+                assistantText += message.data?.text || "";
+                assistantParts.answerText.textContent = assistantText;
+                assistantParts.messageMeta.textContent = "Streaming...";
+                scrollToBottom();
+                return;
               }
 
-              if (data.error) {
-                assistantMeta.textContent = data.error;
-                assistantMeta.classList.add("error");
-                setStatus(data.error, "error");
+              if (message.type === "done") {
+                assistantParts.messageMeta.textContent = `finish: ${message.data?.finishReason || "stop"}`;
+                setStatus("Ready", "ok");
+
+                if (assistantText) {
+                  conversation.push({
+                    role: "assistant",
+                    content: assistantText,
+                  });
+                }
+
+                void refreshStatus();
+                return;
+              }
+
+              if (message.type === "error") {
+                assistantParts.messageMeta.textContent = message.error?.message || "Inference failed.";
+                assistantParts.messageMeta.classList.add("error");
+                setStatus(message.error?.message || "Inference failed.", "error");
               }
             });
           }
-
-          if (assistantText) {
-            conversation.push({
-              role: "assistant",
-              content: assistantText,
-            });
-          }
-
-          setStatus("Ready", "ok");
         } catch (error) {
           if (error.name === "AbortError") {
-            assistantMeta.textContent = "Stopped.";
+            assistantParts.messageMeta.textContent = "Stopped.";
+            assistantParts.messageMeta.classList.add("error");
             setStatus("Stopped.", "");
-          } else {
-            assistantMeta.textContent = error.message || "Request failed.";
-            assistantMeta.classList.add("error");
-            setStatus(error.message || "Request failed.", "error");
+            return;
           }
+
+          assistantParts.messageMeta.textContent = error.message || "Request failed.";
+          assistantParts.messageMeta.classList.add("error");
+          setStatus(error.message || "Request failed.", "error");
         } finally {
-          abortController = null;
+          activeAbortController = null;
+          activeAssistant = null;
           setRunning(false);
         }
       }
 
-      sendButton.addEventListener("click", sendPrompt);
+      function sendPrompt() {
+        const text = promptEl.value.trim();
+        const imageItems = currentCapabilities.images ? attachments.slice() : [];
 
-      stopButton.addEventListener("click", () => {
-        if (abortController) {
-          abortController.abort();
+        if (!text && imageItems.length === 0) {
+          return;
+        }
+
+        if (activeAbortController || isModelSwitching) {
+          return;
+        }
+
+        appendUserMessage(text, imageItems);
+
+        const userMessage = buildUserMessage(text, imageItems);
+        const payload = buildRequest(userMessage);
+
+        conversation.push(userMessage);
+
+        const assistantParts = appendAssistantMessage();
+        activeAssistant = assistantParts;
+
+        clearComposer();
+        setRunning(true);
+        setStatus("Connecting...", "");
+
+        void connectStream(payload, assistantParts);
+      }
+
+      async function refreshStatus() {
+        try {
+          const response = await fetch("/api/status", {
+            headers: {
+              "x-correlation-id": correlationId("browser-status"),
+            },
+          });
+
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error(payload.error || "Status request failed.");
+          }
+
+          const data = payload.data || {};
+          const selectedModel = data.selectedModel || {};
+          const activeModel = data.activeModel || {};
+          const details = activeModel.details || {};
+          const loadedModels = data.loadedModels || [];
+          const availableModels = data.availableModels || [];
+
+          modelEl.textContent = "";
+
+          for (const model of availableModels) {
+            const option = document.createElement("option");
+            option.value = model.id;
+            option.textContent = model.label;
+            option.selected = model.id === data.selectedModelId;
+            modelEl.append(option);
+          }
+
+          currentCapabilities = selectedModel.capabilities || {
+            text: true,
+            images: false,
+            thinking: false,
+          };
+
+          const loaded = Boolean(data.loaded);
+          const loadedNames = loadedModels
+            .map((model) => model.name || model.model)
+            .filter(Boolean)
+            .join(", ");
+
+          const capabilities = [
+            currentCapabilities.text ? "Text" : "",
+            currentCapabilities.images ? "Images" : "",
+            currentCapabilities.thinking ? "Thinking" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+
+          const parameterSize = details.parameter_size ? ` | ${details.parameter_size}` : "";
+          const quantization = details.quantization_level ? ` | ${details.quantization_level}` : "";
+          const vram = activeModel.size_vram
+            ? ` | VRAM ${(activeModel.size_vram / 1024 / 1024 / 1024).toFixed(2)} GB`
+            : "";
+          const loadedInfo = loadedNames ? ` | loaded: ${loadedNames}` : "";
+
+          const statusKind = isModelSwitching || data.switching ? "loading" : loaded ? "ok" : "";
+
+          setStatus(
+            `${data.selectedModelId}: ${loaded ? "loaded" : "not loaded"} | ${capabilities}${parameterSize}${quantization}${vram}${loadedInfo}`,
+            statusKind,
+          );
+
+          setRunning(Boolean(activeAbortController));
+        } catch (error) {
+          setStatus(error.message || "Status unavailable", "error");
+        }
+      }
+
+      async function selectModel(modelId) {
+        if (activeAbortController || isModelSwitching) {
+          return;
+        }
+
+        isModelSwitching = true;
+        setRunning(false);
+        setStatus(`Loading ${modelId}...`, "loading");
+
+        try {
+          const response = await fetch("/api/model/select", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-correlation-id": correlationId("browser-model"),
+            },
+            body: JSON.stringify({
+              modelId,
+            }),
+          });
+
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error(payload.error || "Could not switch model.");
+          }
+
+          conversation.splice(0, conversation.length);
+          clearComposer();
+          messages.querySelectorAll(".message").forEach((node) => node.remove());
+          emptyState.style.display = "grid";
+
+          await refreshStatus();
+        } catch (error) {
+          setStatus(error.message || "Could not switch model.", "error");
+          await refreshStatus();
+        } finally {
+          isModelSwitching = false;
+          setRunning(false);
+          await refreshStatus();
+        }
+      }
+
+      attachButton.addEventListener("click", () => {
+        if (currentCapabilities.images && !isModelSwitching) {
+          fileInput.click();
         }
       });
 
-      clearButton.addEventListener("click", () => {
-        if (abortController) return;
+      fileInput.addEventListener("change", () => {
+        void addImageFiles(fileInput.files);
+        fileInput.value = "";
+      });
 
-        conversation.splice(0, conversation.length);
-        messagesEl.querySelectorAll(".message, .meta").forEach((node) => node.remove());
-        emptyStateEl.style.display = "grid";
-        setStatus("Ready", "ok");
+      modelEl.addEventListener("change", () => {
+        void selectModel(modelEl.value);
       });
 
       promptEl.addEventListener("input", autosizePrompt);
+
+      sendButton.addEventListener("click", sendPrompt);
+
+      clearButton.addEventListener("click", () => {
+        if (activeAbortController || isModelSwitching) {
+          return;
+        }
+
+        conversation.splice(0, conversation.length);
+        clearComposer();
+        messages.querySelectorAll(".message").forEach((node) => node.remove());
+        emptyState.style.display = "grid";
+        setStatus("Ready", "ok");
+        void refreshStatus();
+      });
+
+      stopButton.addEventListener("click", () => {
+        if (activeAbortController) {
+          activeAbortController.abort();
+
+          if (activeAssistant) {
+            activeAssistant.messageMeta.textContent = "Stopped.";
+            activeAssistant.messageMeta.classList.add("error");
+          }
+
+          setStatus("Stopped.", "");
+        }
+      });
 
       promptEl.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
@@ -490,7 +1204,54 @@
         }
       });
 
+      document.addEventListener("paste", (event) => {
+        if (!currentCapabilities.images || isModelSwitching) {
+          return;
+        }
+
+        const files = [];
+
+        for (const item of event.clipboardData?.items || []) {
+          if (item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+
+            if (file) {
+              files.push(file);
+            }
+          }
+        }
+
+        if (files.length > 0) {
+          event.preventDefault();
+          void addImageFiles(files);
+        }
+      });
+
+      composer.addEventListener("dragover", (event) => {
+        if (!currentCapabilities.images || isModelSwitching) {
+          return;
+        }
+
+        event.preventDefault();
+        composer.classList.add("dragging");
+      });
+
+      composer.addEventListener("dragleave", () => {
+        composer.classList.remove("dragging");
+      });
+
+      composer.addEventListener("drop", (event) => {
+        if (!currentCapabilities.images || isModelSwitching) {
+          return;
+        }
+
+        event.preventDefault();
+        composer.classList.remove("dragging");
+        void addImageFiles(event.dataTransfer?.files);
+      });
+
       autosizePrompt();
+      void refreshStatus();
     </script>
   </body>
 </html>
